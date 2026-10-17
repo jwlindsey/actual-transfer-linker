@@ -1,0 +1,23 @@
+# actual-transfer-linker settings. Copy to config.yaml and edit.
+
+server:
+  url: http://localhost:5006        # your Actual server
+  file: My Budget                   # the budget's name, as shown in Actual
+  password_env: ACTUAL_PASSWORD     # name of the environment variable holding the server password
+  # encryption_password_env: ACTUAL_ENCRYPTION_PASSWORD   # only if the budget is end-to-end encrypted
+  # cert: false                     # only for a self-signed certificate you trust
+
+# Accounts money moves between, by their names in Actual. Either direction is matched.
+# A third item is a category, used only when one account is on budget and the other off budget
+# (Actual books the on-budget side of such a transfer under a category).
+pairs:
+  - [Checking, Savings]
+  - [PayPal, Checking]
+  - [Checking, Brokerage, Investments]
+
+# What your banks write on a transfer. A transaction that already has a category is only linked when its
+# payee, bank description or notes contain one of these; one without a category is always considered.
+words: [transfer, xfer]
+
+max_days: 5        # the two sides may be this many days apart
+lookback_days: 30  # how far back to look
