@@ -11,6 +11,21 @@ It also fixes a problem with transfers you enter ahead of time. When bank sync l
 transaction to your transfer (same amount, within 7 days), the import can overwrite the transfer's payee and
 half-break the link. The tool puts the payee back.
 
+## Do you need this?
+
+Probably not, if Actual's built-in options cover you:
+
+- **Rules.** A rule can turn a synced transaction into a transfer (set the payee to the other account, e.g.
+  "Transfer: Savings"). Actual then creates the other side, and when that account syncs, its transaction is
+  matched to it instead of being added twice. See [Rules](https://actualbudget.org/docs/budgeting/rules/) and
+  [Transfers](https://actualbudget.org/docs/transactions/transfers).
+- **Past transactions.** The docs have a script for linking transfers already in your budget:
+  [Identify and Apply Transfers Historically](https://actualbudget.org/docs/advanced/scripts/modify-transfers).
+
+This tool is for the cases those leave open: you'd rather not write a rule per account, the receiving side
+sometimes syncs before the sending side, or transfers you entered ahead of time get their payee overwritten
+when bank sync matches them.
+
 ## What gets linked
 
 Two transactions are linked only when **all** of these hold:
