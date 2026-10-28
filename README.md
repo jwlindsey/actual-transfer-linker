@@ -88,6 +88,10 @@ actual-transfer-linker -c config.yaml --apply    # link and repair
 actual-transfer-linker -c config.yaml --sync --apply   # run Actual's bank sync first, then link
 ```
 
+With `--sync`, each account is synced from a week before the newest transaction the bank sent. Transactions
+you typed in yourself don't move that start, so the bank's late postings still come in (0.1.1; before that,
+a transaction entered ahead of the bank could make bank sync skip the bank's later postings).
+
 Example output:
 
 ```

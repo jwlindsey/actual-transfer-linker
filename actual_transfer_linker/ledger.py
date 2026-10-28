@@ -101,6 +101,36 @@ def link(session, pairs: list[Pair], words: list[str], max_days: int, since: dt.
     return matches
 
 
+def sync_start(session, account) -> dt.date | None:
+    """Where bank sync starts for one account: a week before the newest transaction the bank itself sent.
+
+    actualpy starts at the account's newest transaction of any kind. One you typed in before the bank posted
+    it (a transfer entered ahead of time, a purchase logged the same day) then moves the start past whatever
+    the bank posts later with an earlier date, and those are never imported. Fetching the last week again is
+    safe: transactions the bank already sent are recognised by their id. None: no bank transactions yet,
+    actualpy decides.
+    """
+    from actual.database import Transactions
+    from sqlmodel import select
+    newest = session.exec(select(Transactions.date).where(
+        Transactions.acct == account.id, Transactions.financial_id.is_not(None), Transactions.tombstone == 0,
+    ).order_by(Transactions.date.desc())).first()
+    if not newest:
+        return None
+    return dt.datetime.strptime(str(newest), "%Y%m%d").date() - dt.timedelta(days=7)
+
+
+def bank_sync(actual) -> None:
+    """Actual's bank sync for every linked account, each starting at sync_start, then the budget's rules."""
+    from actual.queries import get_accounts
+    s = actual.session
+    imported = []
+    for acct in get_accounts(s):
+        if acct.account_id and acct.account_sync_source:
+            imported += actual.run_bank_sync(account=acct, start_date=sync_start(s, acct))
+    actual.run_rules(imported)
+
+
 def run(cfg, dry_run: bool = True, sync: bool = False, today: dt.date | None = None) -> Report:
     """Open the budget, optionally run bank sync, link and repair transfers, and commit unless `dry_run`."""
     from actual import Actual
@@ -111,7 +141,7 @@ def run(cfg, dry_run: bool = True, sync: bool = False, today: dt.date | None = N
     with Actual(base_url=cfg.url, password=cfg.password, file=cfg.file,
                 encryption_password=cfg.encryption_password, cert=cfg.cert) as actual:
         if sync:
-            actual.run_bank_sync(run_rules=True)
+            bank_sync(actual)
             actual.commit()          # the import is kept even in a dry run: it is what bank sync does anyway
         s = actual.session
         accounts = {a.id: a for a in get_accounts(s)}

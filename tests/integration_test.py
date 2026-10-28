@@ -21,7 +21,7 @@ from actual.database import Accounts, Transactions  # noqa: E402
 from actual.queries import (create_account, create_category, create_transaction, create_transfer,  # noqa: E402
                             get_accounts, get_transactions, reconcile_transaction)
 
-from actual_transfer_linker import cli  # noqa: E402
+from actual_transfer_linker import cli, ledger  # noqa: E402
 
 URL = os.environ.get("ACTUAL_TEST_URL", "http://localhost:5006")
 PASSWORD = "linker-test-only"
@@ -67,6 +67,18 @@ def setup() -> None:
                               imported_payee="XFER FROM SAV")
         a.commit()
         assert len([t for t in get_transactions(s) if abs(t.get_amount()) == Decimal("77.77")]) == 2, "bank match made a duplicate"
+        # 7. typed in today, before the bank has it: must not move where bank sync starts
+        create_transaction(s, TODAY, chk, "Coffee", category=groceries, amount=Decimal("-4.50"))
+        create_account(s, "Wallet", Decimal("20"))
+        a.commit()
+
+
+def check_sync_start() -> None:
+    """Bank sync starts a week before the newest BANK transaction, not the newest transaction."""
+    with Actual(base_url=URL, password=PASSWORD, file=BUDGET, data_dir=tempfile.mkdtemp()) as a:
+        acc = {x.name: x for x in get_accounts(a.session)}
+        got = {n: ledger.sync_start(a.session, acc[n]) for n in ("Checking", "Savings", "Brokerage", "Wallet")}
+    assert got == {"Checking": DAY(8), "Savings": DAY(8), "Brokerage": DAY(10), "Wallet": None}, got
 
 
 def config_file(tmp: Path) -> Path:
@@ -107,6 +119,7 @@ def state() -> dict:
 
 def main() -> int:
     setup()
+    check_sync_start()
     tmp = Path(tempfile.mkdtemp())
     cfg = config_file(tmp)
     before = state()
